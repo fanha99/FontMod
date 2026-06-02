@@ -73,10 +73,20 @@ public class FontDataModel
 
             var create = new TMPro_FontAssetCreatorWindow();
             create.font_TTF_path = fontPath;
-            create.GenerateFontAtlas();
+
+            // CACHE: build SDF lan dau roi luu; cac lan sau nap thang -> khoi build lai (nhanh).
+            string cachePath = Path.Combine(Main.ModEntry.Path, "AtlasCache", name + ".atlas");
+            bool fromCache = create.LoadAtlasCache(cachePath);
+            if (!fromCache)
+                create.GenerateFontAtlas();
+
             create.CreateFontTexture();
 
             asset = create.Save_SDF_FontAsset();
+
+            if (!fromCache && asset != null)
+                create.SaveAtlasCache(cachePath);
+            Main.Logger.Log(fromCache ? ("Atlas tu CACHE (nhanh): " + name) : ("Atlas dung moi + da luu cache: " + name));
 
             if (asset == null)
                 throw new NullReferenceException($"Creation of TMP_FontAsset failed for font {name}");

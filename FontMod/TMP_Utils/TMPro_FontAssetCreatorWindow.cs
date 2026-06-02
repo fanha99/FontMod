@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEditor;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -68,6 +69,7 @@ namespace TMPro.EditorUtilities
         private bool isGenerationCancelled = false;
 
         public string font_TTF_path;
+        public bool skipKerning = false;   // bat khi nap tu cache (khong co FreeType de tinh kerning)
         private TMP_FontAsset m_fontAssetSelection;
         private TextAsset characterList;
         private int font_size;
@@ -438,9 +440,20 @@ namespace TMPro.EditorUtilities
             font_asset.AddGlyphInfo(glyphs);
 
             // Get and Add Kerning Pairs to Font Asset
+            // LUU Y: PHAI luon AddKerningInfo voi bang da khoi tao (du rong), neu khong
+            // ReadFontDefinition() cua TMP cu se NRE (bang kerning null) -> font asset hong.
             if (includeKerningPairs)
             {
-                KerningTable kerningTable = GetKerningTable(font_TTF_path, (int)face.PointSize);
+                KerningTable kerningTable;
+                if (skipKerning)
+                {
+                    kerningTable = new KerningTable();
+                    kerningTable.kerningPairs = new List<KerningPair>();
+                }
+                else
+                {
+                    kerningTable = GetKerningTable(font_TTF_path, (int)face.PointSize);
+                }
                 font_asset.AddKerningInfo(kerningTable);
             }
 
@@ -597,6 +610,122 @@ namespace TMPro.EditorUtilities
             }
 
             return kerningInfo;
+        }
+
+        // ===================== CACHE ATLAS RA DIA =====================
+        // Build SDF lan dau (FreeType, nang) -> luu file; lan sau nap thang, bo qua FreeType.
+        const int CACHE_MAGIC = 0x564E4631; // 'VNF1'
+
+        // Chu ky: doi bat ky thong so nao -> cache cu vo hieu, dung lai.
+        string GetCacheSignature()
+        {
+            long len = 0, ticks = 0;
+            try { var fi = new FileInfo(font_TTF_path); len = fi.Length; ticks = fi.LastWriteTimeUtc.Ticks; } catch { }
+            return "ttf:" + len + ":" + ticks
+                 + "|seq:" + characterSequence
+                 + "|atlas:" + font_atlas_width + "x" + font_atlas_height
+                 + "|pad:" + font_padding
+                 + "|rm:" + (int)font_renderMode
+                 + "|red:" + SizeReductionFactor.ToString("R");
+        }
+
+        public bool LoadAtlasCache(string path)
+        {
+            try
+            {
+                if (!File.Exists(path)) return false;
+                using (var br = new BinaryReader(File.OpenRead(path)))
+                {
+                    if (br.ReadInt32() != CACHE_MAGIC) return false;
+                    if (br.ReadString() != GetCacheSignature()) return false;
+                    font_atlas_width = br.ReadInt32();
+                    font_atlas_height = br.ReadInt32();
+
+                    var f = new FT_FaceInfo();
+                    f.name = br.ReadString();
+                    f.pointSize = br.ReadInt32();
+                    f.padding = br.ReadInt32();
+                    f.lineHeight = br.ReadSingle();
+                    f.baseline = br.ReadSingle();
+                    f.ascender = br.ReadSingle();
+                    f.descender = br.ReadSingle();
+                    f.centerLine = br.ReadSingle();
+                    f.underline = br.ReadSingle();
+                    f.underlineThickness = br.ReadSingle();
+                    f.characterCount = br.ReadInt32();
+                    f.atlasWidth = br.ReadInt32();
+                    f.atlasHeight = br.ReadInt32();
+                    m_font_faceInfo = f;
+
+                    int gc = br.ReadInt32();
+                    var gl = new FT_GlyphInfo[gc];
+                    for (int i = 0; i < gc; i++)
+                    {
+                        var g = new FT_GlyphInfo();
+                        g.id = br.ReadInt32();
+                        g.x = br.ReadSingle(); g.y = br.ReadSingle();
+                        g.width = br.ReadSingle(); g.height = br.ReadSingle();
+                        g.xOffset = br.ReadSingle(); g.yOffset = br.ReadSingle();
+                        g.xAdvance = br.ReadSingle();
+                        gl[i] = g;
+                    }
+                    m_font_glyphInfo = gl;
+                    m_character_Count = gc;
+
+                    int blen = br.ReadInt32();
+                    if (blen != font_atlas_width * font_atlas_height) return false;
+                    m_texture_buffer = br.ReadBytes(blen);
+                    if (m_texture_buffer.Length != blen) return false;
+                }
+                skipKerning = true; // khong co FreeType -> bo kerning (anh huong khong dang ke)
+                return true;
+            }
+            catch (Exception e) { Debug.Log("[FontMod] LoadAtlasCache bo qua: " + e.Message); return false; }
+        }
+
+        public void SaveAtlasCache(string path)
+        {
+            try
+            {
+                if (m_texture_buffer == null || m_font_glyphInfo == null) return;
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                using (var bw = new BinaryWriter(File.Create(path)))
+                {
+                    bw.Write(CACHE_MAGIC);
+                    bw.Write(GetCacheSignature());
+                    bw.Write(font_atlas_width);
+                    bw.Write(font_atlas_height);
+
+                    var f = m_font_faceInfo;
+                    bw.Write(f.name ?? "");
+                    bw.Write(f.pointSize);
+                    bw.Write(f.padding);
+                    bw.Write(f.lineHeight);
+                    bw.Write(f.baseline);
+                    bw.Write(f.ascender);
+                    bw.Write(f.descender);
+                    bw.Write(f.centerLine);
+                    bw.Write(f.underline);
+                    bw.Write(f.underlineThickness);
+                    bw.Write(f.characterCount);
+                    bw.Write(f.atlasWidth);
+                    bw.Write(f.atlasHeight);
+
+                    bw.Write(m_font_glyphInfo.Length);
+                    for (int i = 0; i < m_font_glyphInfo.Length; i++)
+                    {
+                        var g = m_font_glyphInfo[i];
+                        bw.Write(g.id);
+                        bw.Write(g.x); bw.Write(g.y);
+                        bw.Write(g.width); bw.Write(g.height);
+                        bw.Write(g.xOffset); bw.Write(g.yOffset); bw.Write(g.xAdvance);
+                    }
+
+                    bw.Write(m_texture_buffer.Length);
+                    bw.Write(m_texture_buffer);
+                }
+            }
+            catch (Exception e) { Debug.Log("[FontMod] SaveAtlasCache loi: " + e); }
         }
     }
 }
