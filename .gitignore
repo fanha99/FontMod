@@ -399,3 +399,7 @@ FodyWeavers.xsd
 *.sln.iml
 
 GamePath*.props
+
+# Kingmaker VN build: artifacts & publicized GAME DLLs (copyrighted - do NOT commit)
+/out/
+/pub/

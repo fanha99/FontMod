@@ -22,7 +22,7 @@ public static class TMPTestPach
     
 #endif
 
-    [HarmonyPatch(typeof(TextMeshProUGUI), nameof(TextMeshProUGUI.LoadFontAsset))]
+    [HarmonyPatch(typeof(TextMeshProUGUI), "LoadFontAsset")]
     [HarmonyPrefix]
     static void TextPatch(TextMeshProUGUI __instance)
     {
@@ -49,7 +49,7 @@ public static class TMPTestPach
             fontAsset = FontMapper.Instance.GetFontMapped(fontAsset);
     }
 
-    [HarmonyPatch(typeof(TMP_Text), nameof(TMP_Text.ValidateHtmlTag))]
+    [HarmonyPatch(typeof(TMP_Text), "ValidateHtmlTag")]
     [HarmonyTranspiler]
     static IEnumerable<CodeInstruction> TagPatch(IEnumerable<CodeInstruction> instructions, ILGenerator iLGen)
     {

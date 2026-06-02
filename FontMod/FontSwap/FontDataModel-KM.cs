@@ -1,7 +1,6 @@
 ﻿#if KM
 using Newtonsoft.Json;
 using System;
-using System.Drawing;
 using System.IO;
 using TMPro;
 using TMPro.EditorUtilities;

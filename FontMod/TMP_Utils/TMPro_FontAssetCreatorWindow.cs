@@ -41,7 +41,7 @@ namespace TMPro.EditorUtilities
         private enum PreviewSelectionTypes { PreviewFont, PreviewTexture, PreviewDistanceField };
         private PreviewSelectionTypes previewSelection;
 
-        private string characterSequence = "32 - 126, 160, 8203, 8230, 9633"; //ASCII
+        private string characterSequence = "32 - 126, 160, 192 - 263, 272 - 273, 296 - 297, 360 - 361, 416 - 417, 431 - 432, 768 - 772, 777, 803, 7840 - 7929, 8203, 8211 - 8212, 8216 - 8217, 8220 - 8221, 8230, 9633"; //ASCII + Vietnamese (Latin-1, Latin Extended-A/B, combining marks, U+1EA0-U+1EF9)
         private string output_feedback = "";
         private string output_name_label = "Font: ";
         private string output_size_label = "Pt. Size: ";
@@ -76,8 +76,8 @@ namespace TMPro.EditorUtilities
         private FaceStyles font_style = FaceStyles.Normal;
         private float font_style_mod = 2;
         private RenderModes font_renderMode = RenderModes.DistanceField16;
-        private int font_atlas_width = 512;
-        private int font_atlas_height = 512;
+        private int font_atlas_width = 2048;
+        private int font_atlas_height = 2048;
 
         //private int m_shaderSelectionIndex;
         //private Shader m_shaderSelection;
@@ -504,13 +504,17 @@ namespace TMPro.EditorUtilities
             return settings;
         }
 
+        // He so thu nho chu hien thi: PointSize bao lon hon -> TMP render chu nho lai dong deu.
+        // 1.0 = giu nguyen; 1.1 ~ nho hon ~9% ("giam 1 size"); tang len de nho hon nua.
+        public static float SizeReductionFactor = 1.1f;
+
         // Convert from FT_FaceInfo to FaceInfo
         FaceInfo GetFaceInfo(FT_FaceInfo ft_face, int scaleFactor)
         {
             FaceInfo face = new FaceInfo();
 
             face.Name = ft_face.name;
-            face.PointSize = (float)ft_face.pointSize / scaleFactor;
+            face.PointSize = (float)ft_face.pointSize / scaleFactor * SizeReductionFactor;
             face.Padding = ft_face.padding / scaleFactor;
             face.LineHeight = ft_face.lineHeight / scaleFactor;
             face.CapHeight = 0;
