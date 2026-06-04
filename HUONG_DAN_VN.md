@@ -30,22 +30,36 @@ lần khởi động. Charset đã mở rộng phủ tiếng Việt (U+1EA0–U+
 
 ---
 
-## B. Đổi CỠ CHỮ (câu hỏi #3)
+## B. Đổi CỠ CHỮ (câu hỏi #3) — giờ THEO TỪNG FONT, KHÔNG build lại DLL
 
-File: `FontMod\TMP_Utils\TMPro_FontAssetCreatorWindow.cs`, dòng:
-```csharp
-public static float SizeReductionFactor = 1.1f;
+Cỡ chữ (`SizeReduction`) + kiểu (`Style`) + độ đậm SDF (`StyleMod`) nay là **thiết lập riêng
+từng font** trong `Mods\FontMod\fontBuild.json`. **PHẢI ở dạng mảng cặp `Key`/`Value`** (giống
+`fontMappings.json`) vì Newtonsoft bản Unity của game serialize Dictionary kiểu này — viết dạng
+object `{ }` sẽ lỗi đọc và làm font KHÔNG swap:
+```json
+[
+  { "Key": "NotoSerifSC-VF",  "Value": { "Style": "Bold",   "SizeReduction": 1.05, "StyleMod": 2.0 } },
+  { "Key": "UTM Dai Co Viet", "Value": { "Style": "Normal", "SizeReduction": 1.0,  "StyleMod": 2.0 } }
+]
 ```
-Cơ chế: báo PointSize LỚN hơn thật → TMP scale chữ render NHỎ lại đồng đều (cả chữ lẫn giãn dòng).
+> Mẹo: đừng sửa tay dễ sai dạng — chạy `FontPrebuild` (mục E) để nó tự ghi đúng định dạng.
+
+**`BoldWeight`** (mặc định 0.75): trọng số *faux-bold* lúc chạy. Chỗ tiêu đề (slot `Saber_`) bị
+game ép `FontStyles.Bold` → TMP tự làm dày chữ dù atlas là Normal. Đặt `BoldWeight = 0` cho font
+tiêu đề (vd UTM Dai Co Viet) để **hết bị bold**. Giá trị này KHÔNG nằm trong atlas/chữ ký →
+đổi là áp ngay, không render lại. Tham số tool: `--bold-weight 0`.
+Cơ chế `SizeReduction`: báo PointSize LỚN hơn thật → TMP scale chữ render NHỎ lại đồng đều.
 
 | Giá trị | Kết quả |
 |---------|---------|
-| `1.0f`  | gốc (to nhất) |
-| `1.05f` | nhỏ ~5% |
-| `1.1f`  | nhỏ ~9% (hiện tại) |
-| `1.2f`  | nhỏ ~17% |
+| `1.0`   | gốc (to nhất) |
+| `1.05`  | nhỏ ~5% |
+| `1.1`   | nhỏ ~9% |
+| `1.2`   | nhỏ ~17% |
 
-Sửa số → **Build lại (mục A)**. Không cần đụng gì khác.
+> **`SizeReduction` KHÔNG nằm trong chữ ký cache** → sửa số này rồi vào game là áp dụng ngay,
+> **không cần render lại**. Còn đổi `Style` (Bold↔Normal) thì atlas khác byte → cần build lại
+> cache font đó (xem mục E).
 
 ---
 
@@ -74,13 +88,16 @@ Game Kingmaker dùng 2 font chính:
 
 ---
 
-## D. Vì sao mỗi lần chạy game lại render? (câu hỏi #1)
+## D. Cache atlas (câu hỏi #1) — ĐÃ CÓ
 
-Hiện tại: KHÔNG có cache. `FontDataModel.CreateFontAsset` gọi `GenerateFontAtlas()` (FreeType
-render) → `Save_SDF_FontAsset()` tạo TMP_FontAsset **chỉ trong RAM**, không ghi đĩa. Tắt game
-là mất → lần sau dựng lại.
+`FontDataModel.CreateFontAsset` build SDF lần đầu rồi ghi `AtlasCache\<font>.atlas`
+(atlas thô + FaceInfo + GlyphInfo). Lần sau `LoadAtlasCache()` nạp thẳng, **bỏ qua FreeType**
+→ khởi động nhanh, **không render lại** — miễn là *chữ ký* khớp.
 
-Có thể thêm cache: serialize `m_texture_buffer` (atlas thô) + FaceInfo + GlyphInfo + Kerning ra
-file; lần sau nếu cache khớp (hash TTF + charset + size) thì nạp thẳng, bỏ qua FreeType. Cần sửa
-code FontMod (xem chi tiết khi triển khai). Với ~286 glyph/1 font thì render khá nhanh nên cache
-chỉ đáng làm nếu thêm nhiều font hoặc charset lớn.
+Chữ ký (`FontBuildShared.BuildSignature`, dùng chung mod + tool) theo **từng font**:
+`TTF(size+mtime) + charset + atlas + padding + renderMode + style + styleMod`.
+→ Sửa thiết lập 1 font **không** làm hết hạn cache font khác (hết cảnh "đổi thằng này build lại
+thằng kia"). Đổi file TTF, charset, hoặc `Style`/`StyleMod` → tự build lại đúng font đó.
+
+---
+

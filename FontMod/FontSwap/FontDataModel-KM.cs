@@ -73,6 +73,7 @@ public class FontDataModel
 
             var create = new TMPro_FontAssetCreatorWindow();
             create.font_TTF_path = fontPath;
+            create.ApplyBuildSettings(FontBuildConfig.Get(name)); // style/co chu rieng tung font
 
             // CACHE: build SDF lan dau roi luu; cac lan sau nap thang -> khoi build lai (nhanh).
             string cachePath = Path.Combine(Main.ModEntry.Path, "AtlasCache", name + ".atlas");

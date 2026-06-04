@@ -42,7 +42,7 @@ namespace TMPro.EditorUtilities
         private enum PreviewSelectionTypes { PreviewFont, PreviewTexture, PreviewDistanceField };
         private PreviewSelectionTypes previewSelection;
 
-        private string characterSequence = "32 - 126, 160, 192 - 263, 272 - 273, 296 - 297, 360 - 361, 416 - 417, 431 - 432, 768 - 772, 777, 803, 7840 - 7929, 8203, 8211 - 8212, 8216 - 8217, 8220 - 8221, 8230, 9633"; //ASCII + Vietnamese (Latin-1, Latin Extended-A/B, combining marks, U+1EA0-U+1EF9)
+        private string characterSequence = FontMod.Shared.FontBuildShared.CharacterSequence; //ASCII + Vietnamese (Latin-1, Latin Extended-A/B, combining marks, U+1EA0-U+1EF9)
         private string output_feedback = "";
         private string output_name_label = "Font: ";
         private string output_size_label = "Pt. Size: ";
@@ -74,12 +74,12 @@ namespace TMPro.EditorUtilities
         private TextAsset characterList;
         private int font_size;
 
-        private int font_padding = 5;
-        private FaceStyles font_style = FaceStyles.Normal;
-        private float font_style_mod = 2;
+        private int font_padding = FontMod.Shared.FontBuildShared.Padding;
+        private FaceStyles font_style = FaceStyles.Normal;          // ghi de boi ApplyBuildSettings (theo font)
+        private float font_style_mod = FontMod.Shared.FontBuildShared.DefaultStyleMod;
         private RenderModes font_renderMode = RenderModes.DistanceField16;
-        private int font_atlas_width = 2048;
-        private int font_atlas_height = 2048;
+        private int font_atlas_width = FontMod.Shared.FontBuildShared.AtlasWidth;
+        private int font_atlas_height = FontMod.Shared.FontBuildShared.AtlasHeight;
 
         //private int m_shaderSelectionIndex;
         //private Shader m_shaderSelection;
@@ -477,6 +477,12 @@ namespace TMPro.EditorUtilities
             int spread = font_padding + 1;
             tmp_material.SetFloat(ShaderUtilities.ID_GradientScale, spread); // Spread = Padding for Brute Force SDF.
 
+            // Trong so net theo tung font (runtime, khong nam trong atlas):
+            //  normalStyle AM -> lam manh chu (font tu than nang nhu SaberRegular-VN)
+            //  boldStyle 0    -> tat faux-bold o cho game ep Bold
+            font_asset.normalStyle = font_normalWeight;
+            font_asset.boldStyle = font_boldWeight;
+
             tmp_material.SetFloat(ShaderUtilities.ID_WeightNormal, font_asset.normalStyle);
             tmp_material.SetFloat(ShaderUtilities.ID_WeightBold, font_asset.boldStyle);
 
@@ -519,7 +525,28 @@ namespace TMPro.EditorUtilities
 
         // He so thu nho chu hien thi: PointSize bao lon hon -> TMP render chu nho lai dong deu.
         // 1.0 = giu nguyen; 1.1 ~ nho hon ~9% ("giam 1 size"); tang len de nho hon nua.
-        public static float SizeReductionFactor = 1.1f;
+        // PER-FONT: dat boi ApplyBuildSettings tu fontBuild.json. KHONG nam trong chu ky cache
+        // (chi la he so scale luc nap) -> doi gia tri nay la tuc thi, khoi render lai.
+        public float SizeReductionFactor = FontMod.Shared.FontBuildShared.DefaultSizeReduction;
+
+        // Trong so faux-bold (luc chay). Khong anh huong atlas -> khong nam trong chu ky cache.
+        private float font_boldWeight = FontMod.Shared.FontBuildShared.DefaultBoldWeight;
+        private float font_normalWeight = FontMod.Shared.FontBuildShared.DefaultNormalWeight;
+
+        // Ap thiet lap build rieng cua tung font (style / stroke / co chu / faux-bold).
+        public void ApplyBuildSettings(FontMod.Shared.FontBuildEntry cfg)
+        {
+            if (cfg == null) return;
+
+            if (!Enum.TryParse<FaceStyles>(cfg.Style, true, out var style))
+                style = FaceStyles.Bold;
+
+            font_style = style;
+            font_style_mod = cfg.StyleMod;
+            SizeReductionFactor = cfg.SizeReduction;
+            font_boldWeight = cfg.BoldWeight;
+            font_normalWeight = cfg.NormalWeight;
+        }
 
         // Convert from FT_FaceInfo to FaceInfo
         FaceInfo GetFaceInfo(FT_FaceInfo ft_face, int scaleFactor)
@@ -614,20 +641,12 @@ namespace TMPro.EditorUtilities
 
         // ===================== CACHE ATLAS RA DIA =====================
         // Build SDF lan dau (FreeType, nang) -> luu file; lan sau nap thang, bo qua FreeType.
-        const int CACHE_MAGIC = 0x564E4631; // 'VNF1'
+        const int CACHE_MAGIC = FontMod.Shared.FontBuildShared.CacheMagic; // 'VNF1'
 
-        // Chu ky: doi bat ky thong so nao -> cache cu vo hieu, dung lai.
-        string GetCacheSignature()
-        {
-            long len = 0, ticks = 0;
-            try { var fi = new FileInfo(font_TTF_path); len = fi.Length; ticks = fi.LastWriteTimeUtc.Ticks; } catch { }
-            return "ttf:" + len + ":" + ticks
-                 + "|seq:" + characterSequence
-                 + "|atlas:" + font_atlas_width + "x" + font_atlas_height
-                 + "|pad:" + font_padding
-                 + "|rm:" + (int)font_renderMode
-                 + "|red:" + SizeReductionFactor.ToString("R");
-        }
+        // Chu ky dung CHUNG voi FontPrebuild.exe (FontBuildShared.BuildSignature):
+        // theo TUNG font (ttf+style+styleMod). Doi 1 font khong dung cache font khac.
+        string GetCacheSignature() =>
+            FontMod.Shared.FontBuildShared.BuildSignature(font_TTF_path, (int)font_style, font_style_mod);
 
         public bool LoadAtlasCache(string path)
         {
