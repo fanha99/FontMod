@@ -170,7 +170,8 @@ public class FontMapper
 
     private void LoadFonts()
     {
-        InstalledFonts.AddFromFolderPath(_fontFolder);
+        // Nap font tu Fonts/*.ttf VA AtlasCache/*.atlas (atlas-only khi khong co TTF -> tranh ban quyen).
+        InstalledFonts.AddFontsAndAtlas(_fontFolder, Path.Combine(Main.ModEntry.Path, "AtlasCache"));
 
         if (InstalledFonts.Count == 0)
         {

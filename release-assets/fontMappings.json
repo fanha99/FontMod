@@ -1,0 +1,30 @@
+[
+  {
+    "Key": "default",
+    "Value": {
+      "$id": "1",
+      "Name": "NotoSerif_SemiCondensed-Light",
+      "IsIgnored": false
+    }
+  },
+  {
+    "Key": "NexusSerif-Regular SDF",
+    "Value": {
+      "$ref": "1"
+    }
+  },
+  {
+    "Key": "Saber_Dist32",
+    "Value": {
+      "$id": "2",
+      "Name": "SaberRegular-VN",
+      "IsIgnored": false
+    }
+  },
+  {
+    "Key": "ANTQUAI SDF",
+    "Value": {
+      "$ref": "2"
+    }
+  }
+]

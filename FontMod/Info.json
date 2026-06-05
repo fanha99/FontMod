@@ -1,12 +1,12 @@
 ﻿{
-  "Id": "FontMod",
-  "DisplayName": "FontMod",
-  "Author": "Hambeard",
-  "Version": "1.1.1",
+  "Id": "FontMod-KM-VN",
+  "DisplayName": "FontMod KingMaker Vietnamese",
+  "Author": "Hambeard, Fanha Giang",
+  "Version": "1.1.3",
   "ManagerVersion": "0.25.0",
   "Requirements": [],
   "AssemblyName": "FontMod.dll",
   "EntryMethod": "FontMod.Main.Load",
-  "HomePage": "",
-  "Repository": "https://github.com/thehambeard/FontMod"
+  "HomePage": "https://github.com/fanha99/FontMod",
+  "Repository": "https://raw.githubusercontent.com/fanha99/FontMod/kingmaker-vietnamese/Repository.json"
 }

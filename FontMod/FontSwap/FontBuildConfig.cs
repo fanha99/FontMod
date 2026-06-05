@@ -1,4 +1,3 @@
-#if KM
 using FontMod.Shared;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
@@ -68,4 +67,3 @@ public static class FontBuildConfig
         return FontBuildEntry.Default();
     }
 }
-#endif

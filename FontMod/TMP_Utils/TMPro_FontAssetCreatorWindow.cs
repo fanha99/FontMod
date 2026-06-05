@@ -648,7 +648,7 @@ namespace TMPro.EditorUtilities
         string GetCacheSignature() =>
             FontMod.Shared.FontBuildShared.BuildSignature(font_TTF_path, (int)font_style, font_style_mod);
 
-        public bool LoadAtlasCache(string path)
+        public bool LoadAtlasCache(string path, bool verifySignature = true)
         {
             try
             {
@@ -656,7 +656,10 @@ namespace TMPro.EditorUtilities
                 using (var br = new BinaryReader(File.OpenRead(path)))
                 {
                     if (br.ReadInt32() != CACHE_MAGIC) return false;
-                    if (br.ReadString() != GetCacheSignature()) return false;
+                    // Luon DOC chu ky de dua con tro qua. Chi SO KHOP khi co TTF (de con render lai
+                    // khi font doi). Atlas-only (khong TTF) -> tin atlas, bo qua so khop.
+                    var sig = br.ReadString();
+                    if (verifySignature && sig != GetCacheSignature()) return false;
                     font_atlas_width = br.ReadInt32();
                     font_atlas_height = br.ReadInt32();
 

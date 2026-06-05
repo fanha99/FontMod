@@ -4,10 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
-
-#if KM
 using TMPro.EditorUtilities;
-#endif
 
 namespace FontMod.FontSwap;
 
@@ -30,12 +27,34 @@ public class FontCollection : ICollection<FontDataModel>
         _fontDataModels.Add(item);
     }
 
-#if !KM
-    public void Add(Font item) => Add(FontDataModel.CreateFromFont(item));
-    public void AddFromFilePath(string fontPath) => Add(FontDataModel.CreateFromFontPath(fontPath));
-#else
     public void AddFromFilePath(string fontPath) => Add(FontDataModel.CreateFromPath(fontPath));
-#endif
+
+    // Liet ke font tu CA hai nguon: Fonts/*.ttf VA AtlasCache/*.atlas.
+    //  - Co TTF  -> dung file TTF (build lai khi font doi).
+    //  - Chi atlas (khong TTF) -> nap thang tu atlas; ship khong kem TTF de tranh ban quyen font.
+    // Bo qua moi file khong phai .ttf trong Fonts (vd file license OFL.txt).
+    public void AddFontsAndAtlas(string fontsFolder, string atlasFolder)
+    {
+        // name -> duong dan TTF (null = chi co atlas). So sanh ten khong phan biet hoa thuong.
+        var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        if (Directory.Exists(fontsFolder))
+            foreach (var ttf in Directory.GetFiles(fontsFolder, "*.ttf"))
+                names[Path.GetFileNameWithoutExtension(ttf)] = ttf;
+
+        if (Directory.Exists(atlasFolder))
+            foreach (var atlas in Directory.GetFiles(atlasFolder, "*.atlas"))
+            {
+                var n = Path.GetFileNameWithoutExtension(atlas);
+                if (!names.ContainsKey(n)) names[n] = null; // chi co atlas, khong co TTF
+            }
+
+        foreach (var kvp in names)
+        {
+            try { Add(FontDataModel.CreateFromName(kvp.Key, kvp.Value)); }
+            catch (Exception e) { Main.Logger.Error($"Nap font '{kvp.Key}' loi: {e.Message}"); }
+        }
+    }
 
     public void AddFromFolderPath(string folderPath)
     {

@@ -1,0 +1,3 @@
+File này dc build cache từ font SaberRegular đã việt hóa.
+Vì lý do bản quyền, nên sẽ ko share công khai trên đây.
+chỉ cần ko sửa fontBuild.json sẽ ko mất file này.

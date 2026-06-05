@@ -403,3 +403,6 @@ GamePath*.props
 # Kingmaker VN build: artifacts & publicized GAME DLLs (copyrighted - do NOT commit)
 /out/
 /pub/
+
+# Release zip sinh boi package_release.ps1 (release-assets/ van commit binh thuong)
+/dist/
