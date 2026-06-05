@@ -9,6 +9,7 @@ Fork từ [thehambeard/FontMod](https://github.com/thehambeard/FontMod) (mod g�
 - **Yêu cầu:** [Unity Mod Manager](https://www.nexusmods.com/site/mods/21) (UMM)
 
 ![screenshot](Screenshot.png)
+![screenshot2](Screenshot2.png)
 
 ---
 
