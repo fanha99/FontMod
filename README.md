@@ -8,7 +8,7 @@ Fork từ [thehambeard/FontMod](https://github.com/thehambeard/FontMod) (mod g�
 - **Repo:** https://github.com/fanha99/FontMod
 - **Yêu cầu:** [Unity Mod Manager](https://www.nexusmods.com/site/mods/21) (UMM)
 
-![screenshot](screenShotKM.png)
+![screenshot](Screenshot.png)
 
 ---
 
