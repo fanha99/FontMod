@@ -8,6 +8,7 @@ class Inspect
 {
     const string Managed = @"F:\Games\PathfinderKingmaker\Kingmaker_Data\Managed";
     static Dictionary<short, OperandType> _ops;
+    static Dictionary<short, string> _names;
 
     static void Main(string[] args)
     {
@@ -29,6 +30,13 @@ class Inspect
         var typeName = args.Length > 0 ? args[0] : "Kingmaker.UI.Common.UIUtility";
         var methodFilter = args.Length > 1 ? args[1] : "Saber";
 
+        if (typeName.StartsWith("find:"))
+        {
+            string sub = typeName.Substring(5);
+            Type[] ts; try { ts = asm.GetTypes(); } catch (ReflectionTypeLoadException ex) { ts = ex.Types; }
+            foreach (var t in ts) if (t != null && t.Name == sub) Console.WriteLine(t.FullName);
+            return;
+        }
         var type = asm.GetType(typeName);
         if (type == null) { Console.WriteLine("Khong thay type " + typeName); return; }
 
@@ -44,10 +52,12 @@ class Inspect
     static void BuildOps()
     {
         _ops = new Dictionary<short, OperandType>();
+        _names = new Dictionary<short, string>();
         foreach (var f in typeof(OpCodes).GetFields(BindingFlags.Public | BindingFlags.Static))
         {
             var oc = (OpCode)f.GetValue(null);
             _ops[oc.Value] = oc.OperandType;
+            _names[oc.Value] = oc.Name;
         }
     }
 
@@ -71,8 +81,13 @@ class Inspect
 
             if (!_ops.TryGetValue(code, out var ot)) { Console.WriteLine($"  IL_{opStart:X4} ??0x{code:X}"); break; }
 
+            string opName = _names.TryGetValue(code, out var nm0) ? nm0 : ("0x" + code.ToString("X"));
             switch (ot)
             {
+                case OperandType.ShortInlineI:
+                    { sbyte v = (sbyte)il[i]; i += 1; Console.WriteLine($"  IL_{opStart:X4} {opName} {v}"); break; }
+                case OperandType.InlineI:
+                    { int v = BitConverter.ToInt32(il, i); i += 4; Console.WriteLine($"  IL_{opStart:X4} {opName} {v}"); break; }
                 case OperandType.InlineString:
                     { int tok = BitConverter.ToInt32(il, i); i += 4; string str = "?"; try { str = mod.ResolveString(tok); } catch { } Console.WriteLine($"  IL_{opStart:X4} ldstr  \"{str}\""); break; }
                 case OperandType.InlineMethod:
@@ -83,8 +98,8 @@ class Inspect
                     { float f = BitConverter.ToSingle(il, i); i += 4; Console.WriteLine($"  IL_{opStart:X4} ldc.r4 {f}"); break; }
                 case OperandType.InlineR:
                     { double d = BitConverter.ToDouble(il, i); i += 8; Console.WriteLine($"  IL_{opStart:X4} ldc.r8 {d}"); break; }
-                case OperandType.InlineNone: break;
-                case OperandType.ShortInlineBrTarget: case OperandType.ShortInlineI: case OperandType.ShortInlineVar: i += 1; break;
+                case OperandType.InlineNone: Console.WriteLine($"  IL_{opStart:X4} {opName}"); break;
+                case OperandType.ShortInlineBrTarget: case OperandType.ShortInlineVar: i += 1; break;
                 case OperandType.InlineVar: i += 2; break;
                 case OperandType.InlineI8: i += 8; break;
                 case OperandType.InlineSwitch: { int n = BitConverter.ToInt32(il, i); i += 4 + 4 * n; break; }
